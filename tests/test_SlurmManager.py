@@ -1,5 +1,5 @@
 import unittest
-import SlurmManager
+from SlurmManager import SlurmManager 
 
 class TestSlurmManager(unittest.TestCase):
 

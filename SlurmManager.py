@@ -4,38 +4,85 @@ import tempfile
 
 class SlurmManager:
     def __init__(self):
-        pass
+        self.slurm_available = self.slurm_available()
 
-    def submit_script(self, python_script, preamble=None, job_name="python_job"):
+    def slurm_available(self):
         """
-        Submit a python script to the cluster using SLURM.
+        Check if SLURM is available on the system.
 
-        :param python_script: The python script to run (as a multi-line string)
-        :param preamble: Additional lines to be executed before the python script (e.g., module loads)
-        :param job_name: Name of the job for SLURM
-        :return: Output from the sbatch command.
+        :return: True if SLURM is available, False otherwise.
         """
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".sh", delete=True
-        ) as tmpfile:
-            tmpfile.write("#!/bin/bash\n")
-            tmpfile.write(f"#SBATCH --job-name={job_name}\n")
-            tmpfile.write("#SBATCH --output=slurm_%j.out\n")
-            tmpfile.write("#SBATCH --error=slurm_%j.err\n")
-
-            # Add the preamble if provided
-            if preamble:
-                tmpfile.write(preamble + "\n")
-
-            tmpfile.write("\n")
-            tmpfile.write(f"python - <<EOF\n{python_script}\nEOF\n")
-
-            # Flush contents to ensure they're written to disk before submission
-            tmpfile.flush()
-
-            # Submit the job script
+        try:
             result = subprocess.run(
-                ["sbatch", tmpfile.name], capture_output=True, text=True
+                ["sbatch", "--version"], capture_output=True, text=True, check=True
+            )
+            return "sbatch" in result.stdout
+        except Exception:
+            return False
+
+    def generate_slurm_args(
+        self,
+        partition="default",
+        ntasks=1,
+        cpus_per_task=1,
+        mem="2G",
+        time="1:00:00",
+        job_name="python_job",
+    ):
+        """
+        Generate SLURM arguments based on provided parameters.
+
+        :return: A string containing SLURM directives.
+        """
+        slurm_args = [
+            f"#SBATCH --partition={partition}",
+            f"#SBATCH --ntasks={ntasks}",
+            f"#SBATCH --cpus-per-task={cpus_per_task}",
+            f"#SBATCH --mem={mem}",
+            f"#SBATCH --time={time}",
+            f"#SBATCH --job-name={job_name}",
+            f"#SBATCH --output=slurm_{job_name}_%j.out",
+            f"#SBATCH --error=slurm_{job_name}_%j.err",
+        ]
+
+        return "\n".join(slurm_args)
+
+    def submit_script(self, python_script, preamble=None, **kwargs):
+        """
+        Submit a python script to the cluster using SLURM, or run directly if SLURM is unavailable.
+
+        :param python_script: The python script to run (as a multi-line string).
+        :param preamble: Additional lines to be executed before the python script (e.g., module loads).
+        :param kwargs: SLURM arguments (e.g., partition, ntasks, mem, time, job_name).
+        :return: Output from the sbatch command or direct Python execution.
+        """
+        if self.slurm_available:
+            with tempfile.NamedTemporaryFile(
+                mode="w", suffix=".sh", delete=True
+            ) as tmpfile:
+                slurm_args = self.generate_slurm_args(**kwargs)
+
+                tmpfile.write("#!/bin/bash\n")
+                tmpfile.write(slurm_args + "\n")
+
+                # Add the preamble if provided
+                if preamble:
+                    tmpfile.write(preamble + "\n")
+
+                tmpfile.write("\n")
+                tmpfile.write(f"python - <<EOF\n{python_script}\nEOF\n")
+
+                # Flush contents to ensure they're written to disk before submission
+                tmpfile.flush()
+
+                # Submit the job script
+                result = subprocess.run(
+                    ["sbatch", tmpfile.name], capture_output=True, text=True
+                )
+                return result.stdout
+        else:
+            result = subprocess.run(
+                ["python", "-c", python_script], capture_output=True, text=True
             )
             return result.stdout
 
