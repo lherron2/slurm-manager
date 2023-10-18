@@ -1,0 +1,7 @@
+setup.py
+SlurmManager.egg-info/PKG-INFO
+SlurmManager.egg-info/SOURCES.txt
+SlurmManager.egg-info/dependency_links.txt
+SlurmManager.egg-info/top_level.txt
+tests/__init__.py
+tests/test_SlurmManager.py
