@@ -1,10 +1,10 @@
 import unittest
 import SlurmManager
 
-class TestSlurmClusterManager(unittest.TestCase):
+class TestSlurmManager(unittest.TestCase):
 
     def setUp(self):
-        self.manager = SlurmClusterManager()
+        self.manager = SlurmManager()
 
     def test_generate_slurm_args(self):
         result = self.manager.generate_slurm_args()
