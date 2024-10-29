@@ -45,6 +45,9 @@ class SlurmManager:
             f"#SBATCH --error=slurm_{job_name}_%j.err",
         ]
 
+        if partition == 'scavenger':
+            slurm_args.append(f"#SBATCH --requeue")
+
         return "\n".join(slurm_args)
 
     def submit_script(self, python_script, preamble=None, **kwargs):
